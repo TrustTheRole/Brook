@@ -1,4 +1,4 @@
-# BOT
+# Brook Bot
 - Handles events for super admins
 
 ## Commands
