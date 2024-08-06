@@ -1,0 +1,4 @@
+{
+    "watch": ["bot.js"],
+    "ignore": ["node_modules", "public"]
+}
