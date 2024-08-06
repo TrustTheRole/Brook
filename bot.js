@@ -4,8 +4,8 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
-// const bot = new TelegramBot(token, { polling: true });
-const bot = new TelegramBot(token, { polling: false });
+const bot = new TelegramBot(token, { polling: true });
+// const bot = new TelegramBot(token, { polling: false });
 
 const menu = {
     reply_markup: {
