@@ -4,41 +4,67 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
+
+const admins = ['animeshshukla01'];
+
 const bot = new TelegramBot(token, { polling: true });
-// const bot = new TelegramBot(token, { polling: false });
 
 const menu = {
     reply_markup: {
-        keyboard: [
-            ['Avatar'],
-            ['Settings']
+        inline_keyboard: [
+            [
+                {
+                    text: 'Send Newsletter',
+                    callback_data: 'send-newsletter'
+                }
+            ],
+            [
+                {
+                    text: 'Admin',
+                    callback_data: 'admin'
+                }
+            ]
         ]
     }
 };
 
-
 bot.on('message', (msg) => {
-    const chatId = msg.chat.id;
+    const chatID = msg.chat.id;
     const messageText = msg.text;
 
-    
-    
-    if (messageText === '/start') {
-        bot.sendMessage(chatId, 'Hey there! I am Brook, your personal assistant. How can I help you today?');
+    if (messageText === "/start") {
+        bot.sendMessage(chatID, 'Hey there! I am Brook, your personal assistant. How can I help you today? Hit /menu to see the menu.', menu);
+    }
+
+    if(messageText === "/menu"){
+        bot.sendMessage(chatID, "Here is the menu", menu);
+
     }
 
 
+    if (messageText==="/admin") {
+        if (admins.includes(msg.from.username)) {
+            bot.sendMessage(chatID, 'You are an admin');
+        } else {
+            bot.sendMessage(chatID, 'You are not an admin');
+        }
+    }
+
     if(messageText === "/send-newsletter"){
-        bot.sendMessage(chatId, "Please enter the title of the newsletter.");
+        if(!checkAdmin(msg.from.username)){
+            bot.sendMessage(chatID, "You are not authorized to send newsletters.");
+            return;
+        }
+        bot.sendMessage(chatID, "Please enter the title of the newsletter.");
 
         bot.once('message', (msg) => {
             const newsletter_title = msg.text;
 
-            bot.sendMessage(chatId, "Please enter the topic name");
+            bot.sendMessage(chatID, "Please enter the topic name");
 
             bot.once('message', (msg) => {
                 const topic_name = msg.text;
-                bot.sendMessage(chatId, "Please enter the content of the newsletter");
+                bot.sendMessage(chatID, "Please enter the content of the newsletter");
 
 
                 bot.once('message', (msg) => {
@@ -59,10 +85,10 @@ bot.on('message', (msg) => {
                             console.log(data);
                         });
 
-                        bot.sendMessage(chatId, "Newsletter sent successfully!");
+                        bot.sendMessage(chatID, "Newsletter sent successfully!");
                     }).catch((e)=>{
                         console.log(e);
-                        bot.sendMessage(chatId, "An error occured while sending the newsletter. Please try again later.");
+                        bot.sendMessage(chatID, "An error occured while sending the newsletter. Please try again later.");
                     });
 
                 });
@@ -70,6 +96,8 @@ bot.on('message', (msg) => {
             });
         });
     }
-
-
 });
+
+function checkAdmin(username) {
+    return admins.includes(username);
+}
