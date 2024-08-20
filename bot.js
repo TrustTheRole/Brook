@@ -1,15 +1,10 @@
 const TelegramBot = require('node-telegram-bot-api');
 const dotenv = require('dotenv');
-const axios = require('axios');
-const { enc_data } = require('./config');
+const { getToken, checkAdmin } = require('./helper');
 
 dotenv.config();
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
-
-const admins = ['animeshshukla01'];
-
-
 
 const bot = new TelegramBot(token, { polling: true });
 
@@ -17,16 +12,19 @@ const menu = {
     reply_markup: {
         inline_keyboard: [
             [
-                {
-                    text: 'Send Newsletter',
-                    callback_data: 'send-newsletter'
-                }
+                {text: '/hi', callback_data: '/hi'},
+                { text: '/help', callback_data: '/help' }
             ],
             [
-                {
-                    text: 'Admin',
-                    callback_data: 'admin'
-                }
+                { text: '/admin', callback_data: '/admin' },
+            ],
+            [
+                { text: '/check-frontend', callback_data: '/check-frontend' },
+                { text: '/check-backend', callback_data: '/check-backend' },
+            ]
+            ,
+            [
+                { text: '/send-newsletter', callback_data: '/send-newsletter' },
             ]
         ]
     }
@@ -36,12 +34,12 @@ bot.on('message', async (msg) => {
     const chatID = msg.chat.id;
     const messageText = msg.text;
 
-    if (messageText === "/start") {
-        bot.sendMessage(chatID, 'Hey there! I am Brook, your personal assistant. How can I help you today?');
+    if (messageText === "/start" || messageText === "/hi" || messageText === "/hello") {
+        bot.sendMessage(chatID, 'Hey there! I am Brook, your personal assistant.\nHow can I help you today?\nEnter /help to get the list of commands');
     }
 
-    if (messageText === "/menu") {
-        bot.sendMessage(chatID, "Here is the menu", menu);
+    if (messageText === "/help") {
+        bot.sendMessage(chatID, "Here are the list of commands", menu);
 
     }
 
@@ -52,6 +50,34 @@ bot.on('message', async (msg) => {
         } else {
             bot.sendMessage(chatID, 'You are not an admin');
         }
+    }
+
+    if (messageText === "/check-frontend") {
+        fetch("https://www.trustherole.in/",{
+            method: 'GET',
+        }).then((res) => {
+            console.log(res);
+            bot.sendMessage(chatID, "Frontend is up and running!");
+        }
+        ).catch((e) => {
+            console.log(e);
+            bot.sendMessage(chatID, "Frontend is down!");
+        }
+        );
+    }
+
+    if (messageText === "/check-backend") {
+        fetch("https://www.trustherole.in/ttrapi/health",{
+            method: 'GET',
+        }).then((res) => {
+            console.log(res);
+            bot.sendMessage(chatID, "Backend is up and running!");
+        }
+        ).catch((e) => {
+            console.log(e);
+            bot.sendMessage(chatID, "Backend is down!");
+        }
+        );
     }
 
     if (messageText === "/send-newsletter") {
@@ -78,79 +104,57 @@ bot.on('message', async (msg) => {
                 const topic_name = msg.text;
                 bot.sendMessage(chatID, "Please enter the content of the newsletter");
 
-
                 bot.once('message', (msg) => {
                     const content = msg.text;
 
-                    bot.sendMessage(chatID,"Please wait...Sending newsletter...");
+                    bot.sendMessage(chatID, `${newsletter_title}\n${topic_name}\n\n${content}`);
 
-                    fetch('https://trustherole.in/ttrapi/misc/send-newsletter', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${auth_token}`
-                        },
-                        body: JSON.stringify({
-                            newsletter_title: newsletter_title,
-                            title: topic_name,
-                            content: content
-                        })
-                    }).then((res) => {
-                        res.json().then((data) => {
-                            console.log(data);
-                            if (data.error) {
-                                bot.sendMessage(chatID, data.error);
-                                return;
-                            }
-                            else {
-                                bot.sendMessage(chatID, "Newsletter sent successfully!");
-                            }
-                        });
+                    bot.sendMessage(chatID, "Please Confirm the newsletter. Type 'yes' to send the newsletter or 'no' to cancel");
+
+                    bot.once('message', (msg) => {
+                        const confirm = msg.text;
+                        
+                        if (confirm === 'yes') {
+                            bot.sendMessage(chatID, "Please wait...Sending newsletter...");
+
+                                fetch('https://www.trustherole.in/ttrapi/misc/send-newsletter', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bearer ${auth_token}`
+                                    },
+                                    body: JSON.stringify({
+                                        newsletter_title: newsletter_title,
+                                        title: topic_name,
+                                        content: content
+                                    })
+                                }).then((res) => {
+                                    res.json().then((data) => {
+                                        console.log(data);
+                                        if (data.error) {
+                                            bot.sendMessage(chatID, data.error);
+                                            return;
+                                        }
+                                        else {
+                                            bot.sendMessage(chatID, "Newsletter sent successfully!");
+                                        }
+                                    });
 
 
-                    }).catch((e) => {
-                        console.log(e);
-                        bot.sendMessage(chatID, "An error occured while sending the newsletter. Please try again later.");
-                    });
-
-                });
+                                }).catch((e) => {
+                                    console.log(e);
+                                    bot.sendMessage(chatID, "An error occured while sending the newsletter. Please try again later.");
+                                });
+                        }
+                        else {
+                            bot.sendMessage(chatID, "Newsletter cancelled");
+                        }
+                    }
+                    );
+                }
+                );
 
             });
         });
     }
 });
-
-function checkAdmin(username) {
-    return admins.includes(username);
-}
-
-async function getToken(username) {
-    
-    let data = JSON.stringify({
-        "encrypted_data": enc_data[username]
-    });
-
-    let config = {
-        method: 'post',
-        maxBodyLength: Infinity,
-        url: 'https://www.trustherole.in/ttrapi/user/auth/authenticate',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        data: data
-    };
-
-    const resp  = await axios.request(config)
-        .then((response) => {
-            console.log(JSON.stringify(response.data));
-            return response.data;
-        })
-        .catch((error) => {
-            console.log(error);
-        });
-
-    if(resp && resp.token){
-        return resp.token;
-    }
-    return null;
-}
